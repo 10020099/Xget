@@ -1,0 +1,4 @@
+{
+  "build_command": "npm ci && npx wrangler deploy --dry-run --outdir=dist",
+  "dockerfile": "Dockerfile"
+}
