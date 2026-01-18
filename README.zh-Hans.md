@@ -138,6 +138,83 @@
 - **下载工具兼容**：完美支持 wget、cURL、aria2、IDM 等主流下载工具
 - **CI/CD 集成**：可直接在 GitHub Actions、GitLab CI 等环境中使用
 
+## 🏗️ 系统架构
+
+### 请求处理流程
+
+```mermaid
+graph TD
+    Request[用户请求 / User-Agent] --> Identify{识别平台}
+    Identify -->|无效| Error[返回错误]
+    Identify -->|有效| Transform[转换路径]
+
+    Transform --> CheckProtocol{检查协议}
+
+    CheckProtocol -->|Git| GitHandler[Git 协议适配器]
+    CheckProtocol -->|Docker| DockerHandler[Docker 协议适配器]
+    CheckProtocol -->|AI| AIHandler[AI 推理适配器]
+    CheckProtocol -->|标准| StdHandler[标准适配器]
+
+    GitHandler --> Upstream[获取上游]
+    DockerHandler --> Upstream
+    AIHandler --> Upstream
+
+    StdHandler --> CacheCheck{检查缓存}
+    CacheCheck -->|命中| ReturnCache[返回缓存响应]
+    CacheCheck -->|未命中| Upstream
+
+    Upstream -->|成功| ProcessResponse[处理响应]
+    Upstream -->|失败| Retry{重试?}
+
+    Retry -->|是| Wait["等待 (退避)"] --> Upstream
+    Retry -->|否| Error
+
+    ProcessResponse --> Finalize[添加标头并返回]
+    Finalize --> Response[响应]
+```
+
+### 组件架构
+
+```mermaid
+classDiagram
+    class Worker {
+        +handleRequest(request)
+    }
+    class Config {
+        +PLATFORMS
+        +transformPath()
+    }
+    class Validation {
+        +validateRequest()
+        +isDockerRequest()
+    }
+    class GitProtocol {
+        +configureGitHeaders()
+        +isGitRequest()
+    }
+    class DockerProtocol {
+        +handleDockerAuth()
+        +fetchToken()
+    }
+    class AIProtocol {
+        +configureAIHeaders()
+    }
+    class Security {
+        +addSecurityHeaders()
+    }
+    class Performance {
+        +monitor()
+    }
+
+    Worker --> Config
+    Worker --> Validation
+    Worker --> GitProtocol
+    Worker --> DockerProtocol
+    Worker --> AIProtocol
+    Worker --> Security
+    Worker --> Performance
+```
+
 ## 📖 URL 转换规则
 
 使用预部署实例 **`xget.xi-xu.me`** 或你自己部署的实例，只需简单替换域名并添加平台前缀：
@@ -2533,14 +2610,12 @@ services:
 **使用 Docker Compose:**
 
 ```bash
-docker-compose up -d
+docker compose up -d
 ```
 
 **使用 Podman Compose:**
 
 ```bash
-podman-compose up -d
-# 或者使用 podman compose (Podman 4.0+)
 podman compose up -d
 ```
 
